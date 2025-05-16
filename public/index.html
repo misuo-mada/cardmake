@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>キャラ紹介カードメーカー</title>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: #222;
+      color: #fff;
+      text-align: center;
+      font-family: 'Shippori Mincho B1', serif;
+    }
+    canvas {
+      margin-top: 20px;
+      border: 1px solid #444;
+      background: #900;
+    }
+    input, button, select {
+      margin: 5px;
+      padding: 8px;
+      font-size: 16px;
+      font-family: 'Shippori Mincho B1', serif;
+    }
+  </style>
+</head>
+<body>
+  <h1>キャラクター紹介カードメーカー</h1>
+
+  <input type="file" id="upload" accept="image/*"><br>
+  <input type="text" id="name" placeholder="名前"><br>
+  <input type="text" id="cv" placeholder="職業等"><br>
+  <input type="text" id="roman" placeholder="英語の名前"><br>
+  <label>背景パターン:
+    <select id="bgPattern">
+      <option value="solid">無地背景</option>
+      <option value="diagonal">斜めストライプ</option>
+      <option value="triangles">三角パターン</option>
+    </select>
+  </label>
+  <label>配色テーマ:
+    <select id="colorTheme">
+      <option value="#a00">赤</option>
+      <option value="#006">青</option>
+      <option value="#060">緑</option>
+      <option value="#333">グレー</option>
+    </select>
+  </label><br>
+  <button id="renderBtn">画像を生成</button>
+  <button id="saveBtn">保存</button><br>
+
+  <canvas id="canvas" width="720" height="480"></canvas>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    let charImg = new Image();
+
+    function drawPattern(type, baseColor) {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(0, 0, w, h);
+      if (type === "diagonal") {
+        ctx.strokeStyle = shadeColor(baseColor, -50);
+        for (let i = -w; i < w * 2; i += 20) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i - h, h);
+          ctx.stroke();
+        }
+      } else if (type === "triangles") {
+        ctx.fillStyle = shadeColor(baseColor, -50);
+        for (let y = 0; y < h; y += 40) {
+          for (let x = 0; x < w; x += 40) {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + 40, y);
+            ctx.lineTo(x + 20, y + 40);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+      }
+    }
+
+    function shadeColor(color, percent) {
+      let f = parseInt(color.slice(1), 16),
+          t = percent < 0 ? 0 : 255,
+          p = percent < 0 ? percent * -1 : percent,
+          R = f >> 16,
+          G = f >> 8 & 0x00FF,
+          B = f & 0x0000FF;
+      return "#" + (0x1000000 +
+        (Math.round((t - R) * p / 100) + R) * 0x10000 +
+        (Math.round((t - G) * p / 100) + G) * 0x100 +
+        (Math.round((t - B) * p / 100) + B)).toString(16).slice(1);
+    }
+
+    document.getElementById("upload").addEventListener("change", e => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        charImg.src = reader.result;
+      };
+      reader.readAsDataURL(e.target.files[0]);
+    });
+
+    document.getElementById("renderBtn").addEventListener("click", () => {
+      const name = document.getElementById("name").value || "名前";
+      const cv = document.getElementById("cv").value || "職業等";
+      const roman = document.getElementById("roman").value || "英語の名前";
+      const bgPattern = document.getElementById("bgPattern").value;
+      const baseColor = document.getElementById("colorTheme").value;
+
+      drawPattern(bgPattern, baseColor);
+
+      // --- 斜めの英語名バナー ---
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-Math.PI / 8); // -22.5度くらい
+      ctx.font = "bold 100px 'Shippori Mincho B1', serif";
+      const textWidth = ctx.measureText(roman).width;
+      ctx.fillStyle = "white"; // 白背景
+      ctx.fillRect(-textWidth / 2 - 10, -100, textWidth + 20, 120); // 背景帯
+      ctx.fillStyle = baseColor; // 文字色
+      ctx.textAlign = "center";
+      ctx.fillText(roman, 0, 0);
+      ctx.restore();
+
+      // キャラ画像
+      if (charImg.src) {
+        ctx.drawImage(charImg, 50, 50, 300, 400);
+      }
+
+      // 名前・職業
+      ctx.font = "bold 40px 'Shippori Mincho B1', serif";
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "left";
+      ctx.fillText(name, 400, 350);
+
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(400, 370, 280, 40);
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 20px 'Shippori Mincho B1', serif";
+      ctx.fillText(cv, 410, 398);
+    });
+
+    document.getElementById("saveBtn").addEventListener("click", () => {
+      const a = document.createElement("a");
+      a.download = "character_card.png";
+      a.href = canvas.toDataURL();
+      a.click();
+    });
+  </script>
+</body>
+</html>
